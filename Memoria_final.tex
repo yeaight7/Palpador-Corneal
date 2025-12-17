@@ -1,0 +1,476 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\sisetup{
+  output-decimal-marker = {.},
+  per-mode = symbol,
+  detect-all = true
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\definecolor{myred}{RGB}{200,0,0}
+
+% -------------------------------------------------------------------------
+% FIGURAS: para que compile aunque las rutas aún no existan.
+% - Reemplaza \includegraphics por un recuadro con el path si el archivo no está.
+% -------------------------------------------------------------------------
+\makeatletter
+\let\origincludegraphics\includegraphics
+\renewcommand{\includegraphics}[2][]{
+  \IfFileExists{#2}{
+    \origincludegraphics[#1]{#2}
+  }{
+    \fbox{
+      \begin{minipage}[c][0.18\textheight][c]{0.85\linewidth}
+      \centering
+      \textbf{[FIGURA PENDIENTE]}\\
+      \small Ruta prevista: \texttt{#2}\\
+      \small (Añadir archivo en esa ruta o actualizar path)
+      \end{minipage}
+    }
+  }
+}
+\makeatother
+
+% Macro para meter placeholders de figuras con comentario del nombre sugerido
+\newcommand{\figplaceholder}[4]{
+\begin{figure}[H]
+\centering
+\includegraphics[width=#2]{#1}
+\caption{#3}
+%\label{fig:#1}
+\end{figure}
+}
+
+\title{\textbf{Memoria Provisional del Proyecto}\\
+Simulador de palpación corneal (ANSYS + SOFA + Unity + interfaz háptica)\\
+\large Borrador estructurado según requisitos de entrega}
+\author{Grupo de trabajo}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+% -------------------------------------------------------------------------
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+Este documento es un \textbf{borrador/memoria provisional} del proyecto, construido para cumplir la \textbf{estructura y requisitos} indicados en las instrucciones de la asignatura: \textbf{Introducción} (mín.\ 2 páginas), \textbf{Estado del arte} (mín.\ 5 páginas), \textbf{Metodología} (mín.\ 5 páginas), \textbf{Resultados} (mín.\ 3 páginas), \textbf{Conclusiones} y \textbf{Referencias} (mín.\ 20 contribuciones científicas).
+En esta versión, se incluyen contenidos disponibles actualmente en las partes de \textbf{modelado y simulación} (ANSYS) y \textbf{adaptación a SOFA}. Las secciones relativas a la \textbf{interfaz háptica}, \textbf{Unity} y la integración completa se han creado como apartados formales pero se marcan explícitamente como \textbf{POR COMPLETAR} (no se inventa información). 
+Las figuras/capturas se han sustituido por \textbf{placeholders} con rutas genéricas (p.\,ej., \texttt{capturas/ansys/...}) para facilitar la inserción posterior sin romper la compilación del PDF.
+
+\clearpage
+
+% -------------------------------------------------------------------------
+\chapter{Introducción}
+% Requisito: mín. 2 páginas
+\section{Contexto y motivación}
+El entrenamiento quirúrgico en oftalmología requiere el desarrollo de habilidades manuales finas y una percepción táctil precisa en tejidos delicados. Entre las tareas relevantes, la \textbf{palpación/indentación corneal} resulta útil para caracterizar la respuesta mecánica del tejido y como base para el desarrollo de entrenadores quirúrgicos con interacción háptica.
+
+Este proyecto aborda la construcción de un \textbf{simulador de palpación corneal} combinando:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Simulación por elementos finitos (ANSYS)} para caracterizar tensiones, deformaciones y desplazamientos.
+  \item \textbf{Simulación interactiva (SOFA)} como plataforma orientada a tejidos blandos e interacción en tiempo real.
+  \item \textbf{Interfaz háptica} (lápiz/dispositivo háptico) para retroalimentación de fuerza \textcolor{myred}{(por completar en este borrador)}.
+  \item \textbf{Integración con Unity} para visualización e interacción \textcolor{myred}{(por completar en este borrador)}.
+\end{itemize}
+
+\section{Objetivos}
+\subsection{Objetivo general}
+Desarrollar un simulador que permita \textbf{palpar una córnea virtual} y observar/medir su respuesta mecánica, con el objetivo de aproximar un entorno de entrenamiento quirúrgico reproducible y extensible.
+
+\subsection{Objetivos específicos}
+\begin{enumerate}[leftmargin=1.2cm]
+  \item Construir un modelo geométrico y mecánico simplificado de córnea y ejecutar simulaciones FEM en ANSYS.
+  \item Obtener resultados de interés: mapas de tensiones, deformaciones, desplazamientos y curva fuerza--desplazamiento.
+  \item Adaptar la geometría/malla para una simulación volumétrica en SOFA y construir una escena funcional con contacto/palpador.
+  \item Diseñar la arquitectura software para integrar simulación + interfaz háptica + visualización en Unity \textcolor{myred}{(POR COMPLETAR)}.
+  \item Preparar una estrategia de \textbf{reducción de modelo} para ejecución en tiempo real \textcolor{myred}{(POR COMPLETAR)}.
+\end{enumerate}
+
+\section{Alcance}
+En esta entrega provisional:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Se documenta con detalle la parte de \textbf{simulación FEM} (geometría, malla, tipo de elemento, materiales, contorno y cargas).
+  \item Se documenta la \textbf{adaptación a SOFA} y el pipeline de generación/importación de malla.
+  \item Se establece el esqueleto completo de la memoria final (incluyendo apartados de háptica e integración) sin inventar contenido no disponible.
+\end{itemize}
+
+\section{Estructura del documento}
+El documento sigue los apartados exigidos en las instrucciones: Introducción, Estado del arte, Metodología, Resultados, Conclusiones y Referencias, incluyendo un apéndice con checklist de requisitos.
+
+\clearpage
+
+
+\chapter{Estado del arte de entrenadores quirúrgicos en oftalmología}
+% Requisito: mín. 5 páginas, muchas citas, buen formato
+\section{Panorama general}
+\textbf{\textcolor{myred}{[POR COMPLETAR / EN DESARROLLO]}}.
+\textcolor{myred}{Este capítulo debe recoger un estado del arte sobre entrenadores quirúrgicos en oftalmología, no solo centrado en palpación, sino también en otras intervenciones. En esta versión se deja la estructura recomendada, con espacios para incorporar referencias científicas (mínimo 20 en total en la memoria final, preferentemente la mayoría aquí y en metodología).}
+
+\section{Entrenadores basados en simulación y realidad virtual}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+\begin{itemize}[leftmargin=1.2cm]
+  \item Simuladores VR/AR/MR para entrenamiento oftalmológico.
+  \item Métricas de evaluación objetiva (tiempo, trayectorias, fuerza, errores).
+  \item Validez del simulador (face validity, construct validity, predictive validity).
+\end{itemize}
+
+\section{Entrenadores con retroalimentación háptica}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+\begin{itemize}[leftmargin=1.2cm]
+  \item Dispositivos hápticos tipo stylus (p.\,ej., Phantom Omni/Touch y equivalentes).
+  \item Modelos de contacto y estabilidad (frecuencias altas de servo loop).
+  \item Integración de motores físicos (SOFA/CHAI3D) con entornos de render (Unity).
+\end{itemize}
+
+\section{Simulación de tejidos oculares (córnea) y biomecánica}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Aquí debe incluirse literatura sobre:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Modelos FEM de córnea (lineales, hiperelásticos, anisótropos, viscoelásticos).
+  \item Identificación de parámetros mediante ensayos (indentación, air-puff).
+  \item Influencia de condiciones fisiológicas (presión intraocular, anclajes periféricos).
+\end{itemize}
+
+\section{Intervenciones oftalmológicas relevantes (más allá de palpación)}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Ejemplos de áreas que se esperan cubrir:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Cirugía de cataratas (phacoemulsification) y simuladores asociados.
+  \item Procedimientos corneales (LASIK, cross-linking) y simulación de cambios biomecánicos.
+  \item Técnicas vitreorretinianas (vitrectomía) y necesidades de entrenamiento.
+\end{itemize}
+
+\clearpage
+
+
+\chapter{Metodología}
+% Requisito: mín. 5 páginas. Incluir simulación multifísica (detalles FEM) + integración háptica
+\section{Visión general del flujo de trabajo}
+El flujo de trabajo propuesto se compone de cuatro bloques:
+\begin{enumerate}[leftmargin=1.2cm]
+  \item \textbf{ANSYS}: modelado y simulación FEM para obtención de respuesta mecánica.
+  \item \textbf{Exportación/Conversión}: preparación de geometría/malla para simulación interactiva.
+  \item \textbf{SOFA}: escena con modelo deformable + palpador + contacto.
+  \item \textbf{Integración}: Unity + interfaz háptica + reducción de modelo \textcolor{myred}{(POR COMPLETAR)}.
+\end{enumerate}
+
+
+\section{Simulación FEM en ANSYS (modelado y configuración)}
+\subsection{Geometría de la córnea}
+\textbf{[A COMPLETAR CON VUESTROS PARÁMETROS DEFINITIVOS]}.
+En la fase actual se trabaja con una geometría simplificada compatible con la simulación: superficies anterior/posterior y espesor, con posible partición por capas (p.\,ej., estroma anterior/posterior y Bowman).
+
+% Placeholder de figura de geometría
+\figplaceholder{figuras/ansys/png.png}{0.85\linewidth} % geometria_cornea.png
+{Geometría de la córnea en ANSYS (vista general).} 
+
+\subsection{Definición de materiales}
+\textbf{\textcolor{myred}{[A COMPLETAR CON LOS VALORES DEFINITIVOS DISPONIBLES]}}.
+Se describirán los modelos constitutivos adoptados (p.\,ej., lineal elástico con $\nu$ alto para casi-incompresibilidad en la fase inicial) y los parámetros por capa.
+
+\begin{table}[H]
+\centering
+\caption{Propiedades mecánicas (plantilla). \textcolor{myred}{Sustituir por valores finales del modelo.}}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Región} & \textbf{$E$} & \textbf{$\nu$} \\
+\midrule
+Capa 1 (p.\,ej., Bowman) & -- & -- \\
+Capa 2 (p.\,ej., Estroma anterior) & -- & -- \\
+Capa 3 (p.\,ej., Estroma posterior) & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Mallado}
+\textbf{\textcolor{myred}{[A COMPLETAR: tamaño de elemento, criterios de refinamiento, estadísticas]}}.
+Deben incluirse:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Tipo de malla (tetraédrica/hexaédrica/híbrida).
+  \item Tamaño global y refinamiento local (zona de contacto/ápex).
+  \item Número de nodos y elementos.
+  \item Verificación de calidad (skewness, aspect ratio, etc.).
+\end{itemize}
+
+\figplaceholder{figuras/ansys/png.png}{0.85\linewidth} % mallado_cornea.png 
+{Mallado de la córnea en ANSYS.} 
+
+\subsection{Tipo de elemento}
+\textbf{\textcolor{myred}{[A COMPLETAR SEGÚN VUESTRO MODELO]}}.
+Especificar el/los elementos usados:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Elementos sólidos (p.\,ej., tetra de 10 nodos).
+  \item Elementos de lámina/cáscara para capas delgadas, si aplica.
+  \item Elementos de contacto, si aplica.
+\end{itemize}
+
+\subsection{Condiciones de contorno}
+\textbf{\textcolor{myred}{[A COMPLETAR: qué superficies/bordes se fijan y por qué]}}.
+Se deben describir de manera inequívoca:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Restricciones (fixed support, displacement constraints, etc.).
+  \item Justificación biomecánica (anclaje periférico, simplificación del globo ocular, etc.).
+\end{itemize}
+
+\figplaceholder{figuras/ansys/png.png}{0.85\linewidth} % contorno_fixed.png
+{Condiciones de contorno (fijaciones/apoyos) en ANSYS.}
+
+\subsection{Cargas y caso de palpación}
+\textbf{\textcolor{myred}{[A COMPLETAR: magnitud, dirección, región de aplicación, tipo de carga]}}.
+Ejemplos a documentar:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Fuerza remota aplicada sobre una superficie (remote force).
+  \item O bien indentador rígido con contacto explícito.
+  \item Definición de la rampa de carga si se usan subpasos.
+\end{itemize}
+
+\figplaceholder{figuras/ansys/png.png}{0.85\linewidth} % carga_remote_force.png
+{Aplicación de carga de palpación (remote force o equivalente).}
+
+\subsection{Configuración del análisis}
+\textbf{\textcolor{myred}{[A COMPLETAR: tipo de análisis, linealidad, solver]}}.
+\begin{itemize}[leftmargin=1.2cm]
+  \item Tipo: Static Structural / Transient (si aplica).
+  \item Activación de no linealidad geométrica/material.
+  \item Solver y criterios de convergencia.
+\end{itemize}
+
+\section{Simulación en SOFA (adaptación e implementación)}
+\subsection{Motivación y requisitos de SOFA}
+SOFA es un framework para simulación física biomédica orientado a interacción. Para simular un tejido deformable requiere:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Malla volumétrica (tetraedros) con conectividad.
+  \item Modelo mecánico (FEM, fuerzas internas).
+  \item Definición de colisiones y contacto con palpador.
+\end{itemize}
+
+\subsection{Pipeline ANSYS → Gmsh → SOFA}
+\textbf{\textcolor{myred}{[A COMPLETAR CON DETALLES CONCRETOS DE VUESTRO PIPELINE]}}.
+Descripción esperada:
+\begin{enumerate}[leftmargin=1.2cm]
+  \item Exportación desde ANSYS (superficie: \texttt{.obj}/\texttt{.stl}).
+  \item Importación en Gmsh y generación de volumen cerrado.
+  \item Mallado 3D tetraédrico.
+  \item Exportación a \texttt{.msh2}.
+  \item Carga en SOFA y verificación de topología.
+\end{enumerate}
+
+\figplaceholder{figuras/sofa/png.png}{0.85\linewidth} % pipeline_gmsh.png
+{Pipeline de conversión de malla para SOFA.} 
+
+\subsection{Escena SOFA y componentes}
+\textbf{\textcolor{myred}{[A COMPLETAR CON LA ESTRUCTURA REAL DE LA ESCENA]}}.
+Debe incluir:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Nodo del modelo deformable (MechanicalObject, Topology, FEM).
+  \item Material/parámetros y damping.
+  \item Palpador (rigid body o rígido aproximado).
+  \item Contacto y colisiones.
+\end{itemize}
+
+\figplaceholder{figuras/sofa/png.png}{0.85\linewidth} % escena_sofa.png
+{Escena en SOFA: córnea deformable y palpador.} 
+
+\section{Interfaz háptica (lápiz háptico) y requisitos}
+\textbf{\textcolor{myred}{[POR COMPLETAR --- NO HAY INFORMACIÓN SUFICIENTE EN ESTA FASE]}}.
+
+\subsection{Requisitos del software de simulación}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Aquí deben incluirse:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Frecuencia de bucle háptico (típicamente alta, p.\,ej., 500--1000 Hz).
+  \item Separación entre render loop (Unity) y servo loop (háptica).
+  \item Estabilidad numérica del contacto y filtrado de fuerza.
+\end{itemize}
+
+\subsection{UML: clases y casos de uso}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Se debe incluir:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Diagramas UML de clases si se implementa software específico.
+  \item Casos de uso: palpación, calibración, selección de modo, replay, etc.
+\end{itemize}
+
+\figplaceholder{figuras/diagramas/png.png}{0.85\linewidth} % uml_clases.png
+{Diagrama UML de clases (placeholder).} 
+
+\figplaceholder{figuras/diagramas/png.png}{0.85\linewidth} % casos_uso.png
+{Diagrama UML de casos de uso (placeholder).}
+
+% -------------------------------------------------------------------------
+\section{Integración con Unity}
+\textbf{\textcolor{myred}{[POR COMPLETAR --- NO HAY INFORMACIÓN SUFICIENTE EN ESTA FASE]}}.
+
+\subsection{Arquitectura de integración (ANSYS/SOFA/Unity)}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Se debe explicar:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Qué datos se exportan/importan entre herramientas.
+  \item Cómo se sincroniza estado (posición del palpador, deformación, fuerzas).
+  \item Formato de comunicación (p.\,ej., plugin, sockets, shared memory, API).
+\end{itemize}
+
+\figplaceholder{figuras/diagramas/png.png}{0.92\linewidth} % integracion_general.png
+{Diagrama de integración entre ANSYS, SOFA, Unity e interfaz háptica (placeholder).} 
+
+% -------------------------------------------------------------------------
+\section{Reducción de modelo}
+\textbf{\textcolor{myred}{[POR COMPLETAR --- A DEFINIR]}}.
+Este apartado debe describir:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Estrategia: superficie de respuesta, regresión, surrogate model, ROM FEM, etc.
+  \item Variables de entrada (fuerza/posición, parámetros materiales) y salida (desplazamiento, fuerza reactiva).
+  \item Validación contra FEM de alta fidelidad.
+\end{itemize}
+
+\clearpage
+
+% -------------------------------------------------------------------------
+\chapter{Resultados}
+% Requisito: mín. 3 páginas con capturas, mapas, etc.
+\section{Resultados en ANSYS}
+\textbf{\textcolor{myred}{[PENDIENTE DE CAPTURAS Y VALORES NUMÉRICOS]}}.
+
+\subsection{Desplazamientos}
+\figplaceholder{figuras/ansys/png.png}{0.90\linewidth} % desplazamiento_total.png
+{Mapa de desplazamiento total.}
+
+\subsection{Tensiones}
+\figplaceholder{figuras/ansys/png.png}{0.90\linewidth} % tension_principal_1.png
+{Mapa de tensión principal máxima.}
+
+\subsection{Deformaciones}
+\figplaceholder{figuras/ansys/png.png}{0.90\linewidth} % deformacion_eqv.png
+{Mapa de deformación equivalente (o principal).}
+
+\subsection{Curva fuerza--desplazamiento}
+\textbf{\textcolor{myred}{[PENDIENTE]}}.
+\figplaceholder{figuras/ansys/png.png}{0.85\linewidth} % curva_fuerza_desplazamiento.png
+{Curva fuerza--desplazamiento (placeholder).}
+
+\section{Resultados en SOFA}
+\textbf{\textcolor{myred}{[PENDIENTE DE CAPTURAS Y VALIDACIÓN]}}.
+\figplaceholder{figuras/sofa/png.png}{0.90\linewidth} % deformacion_sofa.png
+{Deformación en SOFA bajo palpación.}
+
+\section{Comparativa ANSYS vs SOFA}
+\textbf{\textcolor{myred}{[POR COMPLETAR]}}.
+Este apartado debe incluir:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Comparación cualitativa (forma de deformación).
+  \item Comparación cuantitativa (desplazamiento máximo, fuerzas reactivas, etc.).
+  \item Discusión de discrepancias (malla, material, contacto, escala).
+\end{itemize}
+
+\clearpage
+
+% -------------------------------------------------------------------------
+\chapter{Conclusiones}
+\section{Conclusiones provisionales}
+\textbf{\textcolor{myred}{[A COMPLETAR CUANDO HAYA RESULTADOS]}}.
+En esta fase se pueden dejar conclusiones de proceso:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Se ha establecido un flujo de simulación FEM y un pipeline de conversión de malla para simulación interactiva.
+  \item Se ha preparado la estructura formal del informe cumpliendo los requisitos mínimos.
+  \item Se requiere completar la integración háptica/Unity y añadir capturas/resultados cuantitativos.
+\end{itemize}
+
+\section{Líneas futuras}
+\textbf{\textcolor{myred}{[A COMPLETAR]}}.
+\begin{itemize}[leftmargin=1.2cm]
+  \item Incorporar presión intraocular (IOP) y mejorar condiciones de contorno.
+  \item Ajustar modelos constitutivos (hiperelasticidad, anisotropía, viscoelasticidad).
+  \item Implementar e integrar el bucle háptico y el render en Unity.
+  \item Definir y validar estrategia de reducción de modelo.
+\end{itemize}
+
+\clearpage
+
+% -------------------------------------------------------------------------
+\chapter{Referencias}
+% Requisito: mín. 20 contribuciones científicas
+\textbf{\textcolor{myred}{[POR COMPLETAR: añadir al menos 20 referencias científicas]}}.
+
+% Nota: las referencias web "valen" 0.2 según las instrucciones, así que priorizad papers/libros.
+% Aquí dejamos un esqueleto. Sustituir por referencias reales en formato consistente.
+
+\begin{thebibliography}{99}
+
+\bibitem{REF1}
+Autor, Título del artículo, Revista, Año. \textit{[POR COMPLETAR]}
+
+\bibitem{REF2}
+Autor, Título del artículo, Revista, Año. \textit{[POR COMPLETAR]}
+
+\bibitem{REF3}
+Autor, Título del artículo, Revista, Año. \textit{[POR COMPLETAR]}
+
+\bibitem{REF4}
+Autor, Título del artículo, Revista, Año. \textit{[POR COMPLETAR]}
+
+\bibitem{REF5}
+Autor, Título del artículo, Revista, Año. \textit{[POR COMPLETAR]}
+
+% ...
+% Añadir hasta mínimo 20 referencias científicas
+
+\end{thebibliography}
+
+\appendix
+% -------------------------------------------------------------------------
+\chapter{Checklist de requisitos (según instrucciones)}
+\section{Informe (PDF, LaTeX)}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Introducción: mínimo 2 páginas \quad \textbf{\textcolor{myred}{[PENDIENTE DE VERIFICACIÓN]}}
+  \item Estado del arte: mínimo 5 páginas, número de citas y formato \quad \textbf{\textcolor{myred}{[POR COMPLETAR]}}
+  \item Metodología: mínimo 5 páginas (multifísica + háptica) \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+  \item Resultados: mínimo 3 páginas con capturas/mapas \quad \textbf{\textcolor{myred}{[PENDIENTE]}}
+  \item Conclusiones: hallazgos + líneas futuras \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+  \item Referencias: mínimo 20 científicas; webs valen 0.2 \quad \textbf{\textcolor{myred}{[PENDIENTE]}}
+\end{itemize}
+
+\section{Contenido FEM obligatorio}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Geometría \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+  \item Malla \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+  \item Tipo de elemento \quad \textbf{\textcolor{myred}{[PENDIENTE]}}
+  \item Materiales \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+  \item Condiciones de contorno \quad \textbf{\textcolor{myred}{[PARCIAL]}}
+\end{itemize}
+
+\section{Contenido háptica e integración}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Necesidades del software de simulación \quad \textbf{\textcolor{myred}{[POR COMPLETAR]}}
+  \item UML (clases) si procede \quad \textbf{\textcolor{myred}{[POR COMPLETAR]}}
+  \item Diagramas de uso por parte del usuario \quad \textbf{\textcolor{myred}{[POR COMPLETAR]}}
+  \item Integración de softwares \quad \textbf{\textcolor{myred}{[POR COMPLETAR]}}
+\end{itemize}
+
+\end{document}
