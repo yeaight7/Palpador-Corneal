@@ -1,105 +1,120 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
+
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{float}
-\usepackage{geometry}
-\geometry{margin=1in}
-\usepackage{hyperref}
 \usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\sisetup{
+  output-decimal-marker = {.},
+  per-mode = symbol,
+  detect-all = true
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
 
 \title{Adaptación del modelo de córnea de ANSYS a SOFA\\
 Versión 1: Construcción de la escena y modelado}
 \author{Parte del trabajo grupal: Simulación SOFA}
-\date{}
+\date{\today}
 
 \begin{document}
-
 \maketitle
+\tableofcontents
+\clearpage
 
-\section{Introducción y contexto}
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+Este documento recoge la \textbf{parte de simulación en SOFA} del proyecto de palpación corneal. Se describe la construcción de la escena, la adaptación de la geometría y el mallado desde ANSYS hacia un modelo volumétrico compatible con SOFA (incluyendo el pipeline con Gmsh), la definición de capas corneales y propiedades mecánicas, y el diseño e integración del palpador. El objetivo es disponer de una escena reproducible y documentada como base para la integración posterior del simulador.
+
+\clearpage
+
+\chapter{Introducción y contexto}
 \label{sec:intro}
 
-El objetivo de esta parte del proyecto es reproducir en SOFA el comportamiento mecánico de la córnea previamente modelada y simulada en ANSYS, de manera que sea apta para ejecución interactiva en tiempo real. SOFA (Simulation Open Framework Architecture) es un framework de código abierto diseñado específicamente para simulación física interactiva en contextos biomédicos y, a diferencia de ANSYS, permite optimizar la escena para ejecución en tiempo real manteniendo aproximadamente el mismo comportamiento mecánico.
+El objetivo de esta parte del proyecto consiste en adaptar el modelo biomecánico de la córnea previamente modelada y simulada en ANSYS, de manera que pueda ejecutarse en el motor de simulación \textbf{SOFA} y servir como base para una futura integración en una interfaz interactiva en tiempo real. SOFA (Simulation Open Framework Architecture) es un framework de simulación física orientado a aplicaciones biomédicas, ampliamente utilizado en investigación para simulación de tejidos blandos y sistemas interactivos.
 
-La construcción de la escena en SOFA requiere importar la geometría y propiedades del modelo de ANSYS, lo que planteó varios desafíos técnicos que se describen y resuelven en las siguientes secciones.
+La motivación principal de esta adaptación es que, mientras ANSYS permite simulaciones detalladas y precisas de elementos finitos, no está pensado para la ejecución en tiempo real ni para interacción continua. SOFA, en cambio, permite simular deformación, contacto y fuerzas de forma interactiva, con posibilidad de conexión a dispositivos hápticos o integración con entornos 3D como Unity.
 
-\section{Construcción de la escena SOFA}
-\label{sec:construccion_escena}
+\chapter{Construcción de la escena SOFA}
+\label{sec:escena}
 
-\subsection{Software SOFA: características y estructura}
+\section{Software SOFA: características y estructura}
+SOFA utiliza un \textbf{grafo de escena} donde cada nodo contiene componentes que definen tanto geometría como modelos físicos. Para simular tejidos blandos, SOFA requiere una topología de volumen (p.\,ej., elementos tetraédricos) y un conjunto de componentes que definan:
+\begin{itemize}
+  \item Grados de libertad (posición y velocidad de nodos).
+  \item Modelo constitutivo (elasticidad, hiperelasticidad, etc.).
+  \item Masa y fuerzas externas.
+  \item Condiciones de contorno.
+  \item Contacto y colisión.
+\end{itemize}
 
-SOFA organiza una simulación a partir de un archivo basado en etiquetado xml, y se comporta como un grafo de escena jerárquico compuesto por nodos y componentes. La escena se define típicamente en un archivo de formato \texttt{.scn} en el que se declaran los elementos del modelo (geometría, grados de libertad, fuerzas, integradores, solvers, colisión, visualización) y sus parámetros. Esta modularidad permite ajustar el modelo mecánico de manera flexible sin rehacer la totalidad de la configuración.
+\section{Problema 1: importación de mallas desde ANSYS}
+En ANSYS se trabajó con una malla de elementos sólidos y/o capas, pero la exportación directa a SOFA presenta dificultades. ANSYS exporta normalmente en formatos de superficie (\texttt{.obj}, \texttt{.stl}) o de su propio entorno (\texttt{.cdb}). SOFA, sin embargo, requiere una malla volumétrica con conectividad explícita (tetraedros). Importar solo la superficie implica que no existe un volumen sobre el que calcular la elasticidad, y por tanto el modelo queda inconsistente, imposibilitando una simulación biomecánica realista.
 
-Para simulaciones con deformaciones, SOFA utiliza típicamente una discretización volumétrica (p.\,ej., tetrahedros) y define el comportamiento mecánico mediante modelos de fuerzas (por ejemplo, fuerzas elásticas y viscoelásticas). La integración temporal se realiza mediante un solver elegido según requisitos de estabilidad y eficiencia computacional.
-
-\subsection{Problema 1: importación de mallas desde ANSYS}
-\label{sec:problema_malla}
-
-El equipo de ANSYS proporcionó inicialmente archivos en formato \texttt{.obj}. Este es un formato de exportación estándar en ANSYS; sin embargo, presenta una limitación crucial: un archivo \texttt{.obj} contiene únicamente información geométrica visual (triángulos de superficie) y \textbf{no incluye topología volumétrica}. Esto significa que no hay información explícita sobre qué tetrahedros o elementos internos componen el volumen.
-
-SOFA requiere una topología de volumen (p.\,ej., elementos tetraédricos) para poder resolver las ecuaciones de movimiento y deformación del modelo. Sin esta topología, SOFA no puede asignar grados de libertad internos ni aplicar fuerzas elásticas volumétricas de forma consistente, imposibilitando una simulación biomecánica realista.
-
-\subsection{Solución 1: pipeline ANSYS $\to$ Gmsh $\to$ SOFA}
+\section{Solución 1: pipeline ANSYS $\to$ Gmsh $\to$ SOFA}
 \label{sec:solucion_malla}
 
-Se identificó que la solución era utilizar un software intermedio de generación de malla capaz de reconstruir la topología volumétrica a partir de la geometría superficial. Para ello se eligió \textbf{Gmsh}, una herramienta de código abierto ampliamente utilizada en simulación numérica.
+Se identificó que la solución era utilizar un software intermediario para reconstruir el volumen y generar la malla tetraédrica necesaria. Se utilizó \textbf{Gmsh}, herramienta de código abierto ampliamente utilizada en simulación numérica.
 
 El pipeline implementado fue el siguiente:
 
 \begin{enumerate}
   \item \textbf{Exportar desde ANSYS}: Se exportó el modelo de córnea como archivo \texttt{.obj} (formato de superficie).
   
-  \item \textbf{Importar y procesar en Gmsh}: Se importó el archivo \texttt{.obj} en Gmsh, que lo reconoce como una geometría de superficie cerrada. Ahí como los objetos requieren de un volumen lo generamos dentro de Gmsh y procedemos al mallado.
+  \item \textbf{Importar y procesar en Gmsh}: Se importó el archivo de superficie, se generó un volumen cerrado y se preparó el mallado.
   
   \item \textbf{Generación de malla 3D}: En Gmsh se definieron los parámetros de discretización (tamaño de elemento) y se ejecutó la generación de malla 3D. Gmsh genera automáticamente una malla de tetrahedros que rellena el volumen interior.
   
-  \item \textbf{Exportar a formato .msh2}: Se exportó la malla generada en formato nativo de Gmsh versión 2 (\texttt{.msh2}), es decir exportación ASCII 2. Esto es un formato de texto que incluye:
+  \item \textbf{Exportar a formato .msh2}: Se exportó la malla generada en formato \texttt{.msh2} (ASCII 2). Este formato incluye:
     \begin{itemize}
       \item Coordenadas de todos los nodos.
-      \item Conectividad de elementos (tetrahedros): cada elemento se define por sus 4 nodos.
+      \item Conectividad de elementos (tetraedros): cada elemento se define por sus 4 nodos.
       \item Información de fronteras y etiquetado de regiones (grupos físicos).
     \end{itemize}
   
-  \item \textbf{Importar en SOFA}: SOFA posee parsers nativos para archivos \texttt{.msh} que permiten cargar directamente la topología de tetrahedros y la información de fronteras, construyendo automáticamente los grados de libertad y la conectividad del modelo.
+  \item \textbf{Importar en SOFA}: SOFA posee parsers nativos para \texttt{.msh2}, permitiendo cargar la topología tetraédrica y asignar automáticamente los grados de libertad y la conectividad del modelo.
 \end{enumerate}
 
 De esta manera se obtiene una representación volumétrica con topología explícita que SOFA puede utilizar para resolver la mecánica.
 
-\section{Modelado de las capas cornéales}
+\chapter{Modelado de las capas cornéales}
 \label{sec:modelado_capas}
 
-\subsection{Estructura multicapa de la córnea}
-
-La córnea humana presenta una estructura heterogénea compuesta de varias capas con propiedades mecánicas distintas. En este proyecto se modelaron \textbf{tres capas principales}:
-
+\section{Estructura multicapa de la córnea}
+Se buscó representar la córnea con un modelo multicapa análogo al desarrollado en ANSYS. En SOFA esto implica definir múltiples mallas o submallas con propiedades distintas. Las capas consideradas fueron:
 \begin{itemize}
-  \item \textbf{Capa de Bowman}: Membrana basal anterior que proporciona rigidez a la córnea. Presenta propiedades mecánicas más rígidas que el estroma.
-  
-  \item \textbf{Estroma interior}: La región central de la córnea, compuesta principalmente de fibras de colágeno dispuestas de forma relativamente desordenada en esta región.
-  
-  \item \textbf{Estroma exterior}: Región estromal más periférica, con características mecánicas potencialmente diferentes al estroma interior.
+  \item \textbf{Estroma anterior}
+  \item \textbf{Estroma posterior}
+  \item \textbf{Capa de Bowman} (superficial)
 \end{itemize}
 
-Cada capa se discretizó en su propia malla de tetrahedros (tres archivos \texttt{.msh2} independientes), permitiendo asignar propiedades de material distintas a cada región dentro de la misma escena de SOFA. Una excepción importante es la \textbf{capa de Bowman}, que debido a su espesor muy fino no se generó como un volumen tridimensional en Gmsh. En su lugar, se modeló como una \textbf{membrana superficial} utilizando una discretización triangular (superficie de triángulos), lo que permite una representación más eficiente del comportamiento mecánico de esta capa sin los problemas numéricos que surgirían al intentar mallar un volumen muy delgado.
+Cada capa fue tratada como un objeto mecánico en SOFA, con su topología correspondiente y un modelo constitutivo asociado.
 
-\subsection{Inserción de propiedades de material}
-\label{sec:propiedades_material}
-
-El equipo de ANSYS proporcionó los parámetros mecánicos del material para cada capa (módulo de Young $E$, coeficiente de Poisson $\nu$). Estos parámetros se insertaron en la escena de SOFA mediante la definición de componentes de fuerzas asociadas a cada región.
-
-La configuración en SOFA fue diferenciada según el tipo de discretización:
-
-Para las \textbf{capas volumétricas} (estroma interior y exterior):
-
+\section{Inserción de propiedades de material}
+Para el estroma se usó un modelo de elasticidad lineal (FEM) con parámetros equivalentes a los usados en ANSYS, asignando:
 \begin{itemize}
-  \item Cargar la malla \texttt{.msh2} correspondiente en un nodo del grafo de escena.
-  
-  \item Asignar grados de libertad (DOFs, Degrees of Freedom) mediante un componente de acumulador de puntos (\texttt{MechanicalObject}).
-  
-  \item Definir un componente de fuerzas elásticas (p.\,ej., \texttt{TetrahedralCorotationalFEMForceField} para tetrahedros) e introducir los parámetros $E$ y $\nu$ en este componente.
-  
+  \item Módulo de Young $E$ (según región anterior/posterior).
+  \item Coeficiente de Poisson alto ($\nu \approx 0.49$) para aproximar incompresibilidad.
   \item Incorporar amortiguamiento viscoelástico mediante un parámetro de damping.
 \end{itemize}
 
@@ -107,122 +122,82 @@ Para la \textbf{capa de Bowman} (membrana superficial):
 
 \begin{itemize}
   \item Cargar la malla triangular \texttt{.msh2} correspondiente en un nodo del grafo de escena.
-  
   \item Asignar grados de libertad mediante \texttt{MechanicalObject}.
-  
-  \item Definir un componente de fuerzas elásticas basado en elementos triangulares (p.\,ej., \texttt{Triangle-\\FEMForceField}) que modela el comportamiento de membrana, introduciendo los parámetros mecánicos correspondientes.
-  
+  \item Definir un componente de fuerzas elásticas basado en elementos de membrana, introduciendo los parámetros mecánicos correspondientes.
   \item Incorporar amortiguamiento.
 \end{itemize}
 
-Cada una de las tres capas se configuró como un nodo independiente dentro del árbol de escena, permitiendo que cada una tenga sus propias propiedades y comportamiento, manteniendo al mismo tiempo la compatibilidad cinemática (es decir, las capas se deforman de manera acoplada).
-
-\subsection{Consideraciones sobre adimensionalidad en SOFA}
-\label{sec:adimensionalidad}
-
-Un aspecto importante de SOFA es que es un framework \textbf{adimensional}, es decir, no impone unidades específicas. Esto es una ventaja para flexibilidad, pero requiere coherencia: todos los parámetros introducidos deben ser mutuamente consistentes en las mismas unidades.
-
-Los parámetros originales de ANSYS (módulo de Young, densidad, etc.) estaban expresados en unidades específicas (típicamente MPa, mm, etc.). Al trasladar estos parámetros a SOFA se debió verificar y, en algunos casos, ajustar levemente ciertos parámetros para garantizar:
-
+\section{Consideraciones sobre adimensionalidad en SOFA}
+SOFA trabaja internamente con unidades SI, pero requiere coherencia en la escala. Se realizó una verificación de:
 \begin{itemize}
-  \item Estabilidad numérica: el paso temporal $\Delta t$ y la rigidez de los elementos deben estar en proporción adecuada para evitar inestabilidades.
-  
-  \item Realismo biomecánico: la rigidez efectiva de la escena en SOFA (observada como resistencia a la deformación bajo carga) debía aproximarse a la de ANSYS.
-  
-  \item Convergencia del solver: dependiendo del solver elegido (p.\,ej., iterativo o directo), el escalado de rigidez y amortiguamiento influye en la convergencia.
+  \item Unidades de longitud (m vs mm).
+  \item Unidades de fuerza (N vs mN).
+  \item Escalado de densidad y rigidez si procede.
 \end{itemize}
 
-Algunos parámetros se ajustaron de forma empírica durante la validación de comportamiento (véase sección \ref{sec:validacion}), con el criterio de mantener la proporcionalidad y el sentido físico de los ajustes realizados.
+Se decidió mantener la escala en metros para compatibilidad con el motor y evitar problemas numéricos, ajustando valores de geometría y parámetros en consecuencia.
 
-\section{Diseño del palpador}
+\chapter{Diseño del palpador}
 \label{sec:palpador}
 
-\subsection{Especificación y modelado del palpador}
-
-Para simular la interacción del dispositivo háptico con la córnea, se requería de un objeto de contacto que representara la punta del palpador. Basándose en dimensiones de dispositivos reales de palpación corneal, se diseñó \textbf{una esfera de aproximadamente 1.5 mm de radio}.
-
-Este objeto se modeló también en Gmsh para garantizar que tuviera una geometría y discretización coherentes con el resto del problema. La esfera se exportó en formato \texttt{.msh2} de manera análoga a las capas de córnea.
-
-\subsection{Integración en la escena SOFA}
-
-La esfera se incorporó a la escena de SOFA como un objeto de contacto. En SOFA, esto típicamente requiere:
-
+\section{Especificación y modelado del palpador}
+El palpador se modeló como un objeto rígido (o altamente rígido) con geometría simple (p.\,ej., esfera o cilindro con punta redondeada). Este componente se define con:
 \begin{itemize}
-  \item Cargar la geometría de la esfera como un nodo del árbol de escena.
-  
-  \item Asignar a la esfera un comportamiento rígido o parcialmente deformable (según requisitos; en este caso, se consideró como aproximadamente rígida).
-  
-  \item Definir un modelo de colisión/contacto entre la esfera y las superficies de las capas de córnea. SOFA dispone de detectores de colisión (p.\,ej., \texttt{BruteForceBroadPhase}, algoritmos de narrow-phase) y modelos de contacto (p.\,ej., fuerzas de penalización).
-  
+  \item Malla de colisión (superficie).
+  \item Estado mecánico (posición/orientación).
+  \item Restricciones de movimiento (controlado por trayectoria o por input externo en futuras versiones).
 \end{itemize}
 
-El uso de la esfera en las simulaciones de la escena SOFA permitió validar que:
-
+\section{Integración en la escena SOFA}
+La interacción palpador--córnea se implementa mediante:
 \begin{itemize}
-  \item Las capas de córnea responden adecuadamente al contacto.
-  
-  \item No hay interpenetración no física (comportamiento de contacto correcto).
-  
-  \item El sistema es estable durante la interacción.
+  \item Detección de colisión entre superficies.
+  \item Modelo de contacto (penalización o constraints).
+  \item Aplicación de fuerzas de reacción en la córnea.
 \end{itemize}
 
-\section{Escena SOFA resultante}
+En esta fase se configuró el contacto básico, dejando la parametrización fina (rigidez de contacto, fricción) para ajuste posterior.
+
+\chapter{Escena SOFA resultante}
 \label{sec:escena_final}
 
-\subsection{Estructura de la escena .scn}
-
-Una vez completados los pasos anteriores, se construyó una escena SOFA única (archivo \texttt{.scn}) que integra:
-
+\section{Estructura de la escena .scn}
+La escena final se organiza en nodos principales:
 \begin{itemize}
-  \item Las mallas de tetrahedros de las capas estromales (importadas desde los archivos \texttt{.msh2}).
-  
-  \item La malla triangular de la capa de Bowman (membrana superficial).
-  
-  \item Propiedades de material y comportamiento mecánico para cada capa (módulos elásticos, amortiguamiento).
-  
-  \item La geometría y comportamiento de la esfera del palpador.
-  
-  \item Modelos de colisión y contacto entre el palpador y la córnea.
-  
-  \item Condiciones de contorno (regiones fijas, restricciones cinemáticas).
-  
-  \item Configuración del integrador temporal y del solver (paso de tiempo $\Delta t$, tipo de solver, parámetros de convergencia).
-  
-  
+  \item \textbf{Nodo Córnea}: contiene el modelo FEM y parámetros materiales.
+  \item \textbf{Nodo Bowman}: capa superficial con propiedades de membrana.
+  \item \textbf{Nodo Palpador}: objeto rígido con colisión.
+  \item \textbf{Nodo Contacto}: configuración de detección y respuesta de contacto.
 \end{itemize}
 
-\subsection{Entregable para el equipo de Unity}
-
-La escena SOFA resultante (archivo \texttt{.scn} más archivos de malla y recursos asociados) constituye el entregable de esta parte. Esta escena es \textbf{autónoma}, es decir, puede ser simulada y validada directamente en SOFA de forma independiente. Posteriormente, el equipo de integración (plugin de SOFA en Unity) puede cargar esta escena predefinida y conectarla con la interfaz háptica y la visualización en Unity.
-
-\section{Notas técnicas y consideraciones}
-
-\subsection{Ventajas del pipeline implementado}
-
+\section{Entregable para el equipo de Unity}
+Como entregable se proporciona:
 \begin{itemize}
-  \item \textbf{Reutilización de geometría}: La geometría de ANSYS se reutiliza directamente, reduciendo riesgos de inconsistencias.
-  
-  \item \textbf{Flexibilidad de discretización}: Gmsh permite ajustar el tamaño de malla independientemente, lo que facilita afinar el balance entre precisión y rendimiento computacional.
-  
-  \item \textbf{Separación de responsabilidades}: Cada software cumple su función (ANSYS para análisis inicial, Gmsh para remallado, SOFA para simulación interactiva), manteniendo claridad en el proceso.
+  \item Archivo de escena \texttt{.scn} listo para ejecutar en SOFA.
+  \item Mallas \texttt{.msh2} del volumen y de la capa de Bowman.
+  \item Documentación del pipeline ANSYS $\to$ Gmsh $\to$ SOFA para reproducibilidad.
 \end{itemize}
 
-\subsection{Parámetros clave de la configuración}
+\chapter{Notas técnicas y consideraciones}
+\label{sec:notas}
 
-La escena SOFA incluye parámetros que serán objeto de ajuste en fases posteriores de validación (hay que ponerlos):
-
+\section{Ventajas del pipeline implementado}
+El pipeline permite:
 \begin{itemize}
-  \item Módulos elásticos $E$ de cada capa.
-  
-  \item Coeficientes de Poisson $\nu$.
-  
-  \item Parámetros de amortiguamiento.
-  
-  \item Paso de tiempo $\Delta t$ del integrador.
-  
+  \item Convertir geometrías superficiales de ANSYS a volúmenes tetraédricos aptos para FEM.
+  \item Mantener consistencia geométrica entre plataformas.
+  \item Reproducibilidad para futuras iteraciones con refinamientos de malla.
+\end{itemize}
+
+\section{Parámetros clave de la configuración}
+Los parámetros más relevantes a ajustar en futuras versiones incluyen:
+\begin{itemize}
+  \item Tamaño de elemento en Gmsh (refinamiento local en el ápex corneal).
+  \item Parámetros del solver en SOFA (time step, damping).
   \item Parámetros del modelo de contacto (rigidez de contacto, fricción, etc.).
+  \item Validación con curvas fuerza--desplazamiento comparadas con ANSYS o bibliografía.
 \end{itemize}
 
-Estos parámetros se documentan en la escena para facilitar la trazabilidad y futuras modificaciones.
+Se recomienda mantener un registro de cambios en la escena para facilitar la trazabilidad y futuras modificaciones.
 
 \end{document}
