@@ -5,7 +5,7 @@
 \usepackage[spanish]{babel}
 
 \usepackage{geometry}
-\geometry{margin=2.5cm}
+\geometry{top=2.5cm, bottom=2.5cm, left=2cm, right=2cm}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -18,6 +18,7 @@
 \usepackage{hyperref}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{titlesec}
 
 \sisetup{
   output-decimal-marker = {.},
@@ -32,12 +33,17 @@
   urlcolor=blue
 }
 
+% quitar capitulo
+\titleformat{\chapter}[block]
+  {\normalfont\huge\bfseries\color{black}} 
+  {\thechapter.} 
+  {1em} 
+  {\Huge} 
+
+\titlespacing*{\chapter}{0pt}{-50pt}{20pt}
+
 \definecolor{myred}{RGB}{200,0,0}
 
-% -------------------------------------------------------------------------
-% FIGURAS: para que compile aunque las rutas aún no existan.
-% - Reemplaza \includegraphics por un recuadro con el path si el archivo no está.
-% -------------------------------------------------------------------------
 \makeatletter
 \let\origincludegraphics\includegraphics
 \renewcommand{\includegraphics}[2][]{
@@ -62,7 +68,6 @@
 \centering
 \includegraphics[width=#2]{#1}
 \caption{#3}
-%\label{fig:#1}
 \end{figure}
 }
 
