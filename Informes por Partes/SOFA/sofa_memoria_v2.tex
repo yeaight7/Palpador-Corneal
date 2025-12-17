@@ -71,7 +71,7 @@ SOFA utiliza un \textbf{grafo de escena} donde cada nodo contiene componentes qu
 \section{Problema 1: importación de mallas desde ANSYS}
 En ANSYS se trabajó con una malla de elementos sólidos y/o capas, pero la exportación directa a SOFA presenta dificultades. ANSYS exporta normalmente en formatos de superficie (\texttt{.obj}, \texttt{.stl}) o de su propio entorno (\texttt{.cdb}). SOFA, sin embargo, requiere una malla volumétrica con conectividad explícita (tetraedros). Importar solo la superficie implica que no existe un volumen sobre el que calcular la elasticidad, y por tanto el modelo queda inconsistente, imposibilitando una simulación biomecánica realista.
 
-\section{Solución 1: pipeline ANSYS $\to$ Gmsh $\to$ SOFA}
+\section{Solución 1: pipeline ANSYS → Gmsh → SOFA}
 \label{sec:solucion_malla}
 
 Se identificó que la solución era utilizar un software intermediario para reconstruir el volumen y generar la malla tetraédrica necesaria. Se utilizó \textbf{Gmsh}, herramienta de código abierto ampliamente utilizada en simulación numérica.
