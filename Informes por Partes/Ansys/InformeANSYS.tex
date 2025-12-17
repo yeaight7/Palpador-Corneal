@@ -1,0 +1,367 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+
+\sisetup{
+  output-decimal-marker = {.},
+  per-mode = symbol,
+  detect-all = true
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{\textbf{Memoria (Parte ANSYS)}\\
+Simulación biomecánica de la córnea humana mediante FEM\\
+\large Palpador corneal: modelado y análisis en ANSYS}
+\author{Pablo Barceló, Paco Bustos, Javier Rivero}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+Este documento constituye una \textbf{memoria provisional} centrada exclusivamente en la parte de \textbf{modelado y simulación mediante Elementos Finitos (FEM) en ANSYS Workbench/Mechanical} para un palpador corneal. Se describe la geometría simplificada empleada, la definición de materiales, el mallado, las condiciones de contorno, la aplicación de carga y la configuración del solver. Se incluyen también los resultados previstos a reportar (con \emph{placeholders} para capturas), así como limitaciones y líneas de mejora para iteraciones posteriores.
+
+\vspace{0.5cm}
+\noindent\textbf{Nota:} La integración con Unity/sofá/lápiz háptico se documentará en otra memoria; aquí solo se cubre la parte ANSYS.
+
+\chapter{Introducción}
+El objetivo de esta parte del proyecto es desarrollar un \textbf{modelo FEM de córnea} que permita estimar la respuesta mecánica del tejido ante una interacción tipo palpación/indentación, de forma que:
+\begin{itemize}[leftmargin=1.2cm]
+  \item se obtengan campos de \textbf{desplazamiento}, \textbf{tensiones} y \textbf{deformaciones} bajo cargas controladas;
+  \item se pueda derivar una relación \textbf{fuerza--desplazamiento} (rigidez aparente) útil para calibración y comparación experimental;
+  \item el modelo sea lo suficientemente simple como para servir de base a una \textbf{reducción de orden} o aproximación (p.\,ej., superficie de respuesta) para ejecución en tiempo real en un simulador interactivo.
+\end{itemize}
+
+Dado que la córnea es un tejido blando, casi incompresible y con comportamiento complejo (anisotropía, viscoelasticidad, no linealidad), se adopta en esta fase un conjunto de \textbf{hipótesis y simplificaciones} con el fin de obtener un primer modelo funcional, trazable y ajustable.
+
+\chapter{Hipótesis de partida y simplificaciones}
+\section{Modelo de capas reducido}
+La córnea humana presenta varias capas. En esta fase se adopta un modelo reducido con dos componentes principales:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Estroma}: representa el volumen principal y concentra la mayor contribución estructural.
+  \item \textbf{Capa de Bowman}: modelada como una membrana/capa delgada unida al estroma anterior.
+\end{itemize}
+Se omiten epitelio, Descemet y endotelio por su espesor reducido y menor contribución en una aproximación macroestructural (fase provisional).
+
+\section{Geometría simplificada}
+La geometría se aproxima mediante superficies esféricas para las caras anterior y posterior, con espesores medios representativos. Esta idealización facilita el preprocesado, el mallado y la comparativa controlada de resultados.
+
+\section{Modelo constitutivo}
+Se adopta un \textbf{modelo lineal elástico isotrópico} con \textbf{coeficiente de Poisson alto} para aproximar la casi-incompresibilidad. Esta decisión permite una primera simulación reproducible; en iteraciones posteriores se considerará hiperelasticidad/viscoelasticidad y anisotropía.
+
+\chapter{Metodología en ANSYS Workbench/Mechanical}
+
+\section{Entorno de trabajo}
+La simulación se ha desarrollado en ANSYS Workbench/Mechanical (MAPDL solver) con configuración de análisis \textbf{Static Structural}. El solver utilizado es el \textbf{Sparse Matrix Direct Solver} (configuración típica de Mechanical).
+
+\section{Definición geométrica}
+\subsection{Parámetros geométricos principales}
+Se emplean los siguientes valores medios (modelo estándar):
+\begin{itemize}[leftmargin=1.2cm]
+  \item Radio de curvatura \textbf{anterior}: $R_a = \SI{7.8}{mm}$
+  \item Radio de curvatura \textbf{posterior}: $R_p = \SI{6.5}{mm}$
+  \item Espesor central total: $t \approx \SI{0.5}{mm}$
+  \item Espesor capa de Bowman: $t_B \approx \SI{0.012}{mm}$ (\SI{12}{\micro m})
+\end{itemize}
+
+\subsection{Particionamiento por regiones}
+Para capturar el gradiente biomecánico estromal, el estroma se divide en:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Estroma anterior} (\emph{Estroma Interior} en la estructura del modelo).
+  \item \textbf{Estroma posterior} (\emph{Estroma Exterior} en la estructura del modelo).
+\end{itemize}
+La capa de Bowman se define como una capa superficial adherida al estroma anterior.
+
+\section{Materiales}
+\subsection{Suposición de Poisson casi incompresible}
+Se adopta $\nu = 0.49$ para representar el carácter casi incompresible del tejido blando.
+
+\subsection{Propiedades elásticas (fase provisional)}
+Tabla resumen de materiales (valores en módulo de Young):
+\begin{table}[H]
+\centering
+\caption{Propiedades mecánicas adoptadas (modelo lineal isotrópico, fase provisional).}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Región} & \textbf{$E$} & \textbf{$\nu$} \\
+\midrule
+Capa de Bowman & \SI{109.8}{kPa} & 0.49 \\
+Estroma anterior & \SI{281}{kPa} & 0.49 \\
+Estroma posterior & \SI{89.5}{kPa} & 0.49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Para estabilidad numérica y coherencia con unidades en Mechanical, estos valores equivalen a:
+\[
+\SI{281}{kPa} = \SI{0.281}{MPa},\quad
+\SI{89.5}{kPa} = \SI{0.0895}{MPa},\quad
+\SI{109.8}{kPa} = \SI{0.1098}{MPa}.
+\]
+
+\subsection{Densidad (si aplica)}
+Si se requiere densidad para extensiones dinámicas (no usada en estático lineal), se puede adoptar $\rho \approx \SI{1064}{kg/m^3}$ (orden de magnitud de tejido hidratado).
+
+\section{Mallado y tipo de elemento}
+\subsection{Elementos empleados}
+El modelo utiliza:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{SOLID187} para el volumen del estroma (tetraédrico de 10 nodos, comportamiento cuadrático).
+  \item \textbf{SHELL181} para la capa de Bowman (elemento de lámina).
+  \item Elementos de contacto \textbf{TARGE170/CONTA174} para uniones/ligaduras (p.\,ej., unión Bowman--estroma y acoplamientos tipo \emph{remote}).
+\end{itemize}
+
+\subsection{Estadísticas de malla (modelo actual)}
+En la exportación actual del modelo:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Número aproximado de nodos: $\sim 4917$
+  \item Número aproximado de elementos: $\sim 5114$
+\end{itemize}
+Estas cifras son provisionales y deben verificarse/actualizarse si se remalla (especialmente si se refina en el ápex o zona de contacto).
+
+\subsection{Recomendación de refinamiento}
+Para un palpador/indentador, se recomienda:
+\begin{itemize}[leftmargin=1.2cm]
+  \item refinamiento local en zona central (ápex) donde se aplica la carga;
+  \item control de calidad de tetraedros (skewness/orthogonal quality);
+  \item estudio de convergencia (al menos 2--3 niveles de malla) sobre desplazamiento máximo y tensiones máximas.
+\end{itemize}
+
+\section{Contactos y uniones}
+\subsection{Unión Bowman--Estroma}
+Se considera una unión tipo \textbf{bonded} (continuidad cinemática) entre la lámina de Bowman y la superficie del estroma anterior, con objeto de transmitir deformaciones/tensiones sin deslizamiento relativo en esta fase.
+
+\subsection{Acoplamientos para cargas remotas}
+Se utiliza un \emph{Remote Point} (punto remoto interno) para aplicar la carga sobre un conjunto de nodos de una superficie definida, permitiendo distribuir la fuerza de manera controlada y evitando singularidades en un único nodo de la piel/superficie.
+
+\section{Condiciones de contorno y cargas}
+\subsection{Soporte fijo}
+Se aplica un \textbf{Fixed Support} en el borde/nodos de referencia del modelo (región \texttt{\_FIXEDSU} en el preprocesado exportado), imponiendo desplazamientos nulos para simular una restricción equivalente al anclaje periférico.
+
+\subsection{Carga de palpación (Remote Force)}
+La interacción de palpación se modela aplicando una fuerza remota sobre una superficie (región \texttt{SUPERFICIEFUERZA}). En el estado actual del modelo la fuerza aplicada tiene magnitud:
+\[
+F \approx \SI{10}{mN} \quad (\text{componente principal en el eje normal del modelo}).
+\]
+\noindent Esta magnitud es consistente con cargas suaves de indentación/palpación en tejidos blandos; puede parametrizarse para generar curvas fuerza--desplazamiento.
+
+\section{Configuración del análisis (Static Structural)}
+\subsection{Tipo de análisis}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Análisis: \textbf{estático} (\texttt{ANTYPE=0}).
+  \item Solver: \textbf{directo esparso} (Sparse Direct).
+  \item Número de subpasos: 1 (configuración actual).
+\end{itemize}
+
+\subsection{Grados de libertad}
+El sistema resultante es del orden de $\sim 1.7\times 10^4$ ecuaciones (dependiendo de restricciones/contactos).
+
+\section{Magnitudes de salida y postprocesado}
+Para reportar resultados de forma consistente con biomecánica corneal y con el objetivo del proyecto, se consideran:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Desplazamiento total} ($\|\mathbf{u}\|$) y desplazamiento normal en el ápex.
+  \item \textbf{Tensión principal máxima} (relevante para tejidos frágiles/fibrilares).
+  \item \textbf{Deformación equivalente} o componentes principales.
+  \item \textbf{Presión/contacto} (si se usa indentador con contacto real en futuras iteraciones).
+  \item \textbf{Curva fuerza--desplazamiento}: lectura del desplazamiento del punto remoto (o ápex) frente a fuerza aplicada.
+\end{itemize}
+
+\chapter{Resultados preliminares (plantilla de reporte)}
+\textbf{Importante:} Esta sección está preparada para incorporar capturas desde Mechanical. Sustituir los ficheros en \texttt{figures/} y actualizar pies de figura con valores máximos.
+
+\section{Desplazamiento}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/png.png} % deform_total.png
+\caption{Mapa de desplazamiento total bajo carga de palpación. (Insertar captura de Mechanical).}
+\label{fig:deform_total}
+\end{figure}
+
+\section{Tensiones}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/png.png} % stress_principal1.png
+\caption{Tensión principal máxima (First Principal Stress). (Insertar captura de Mechanical).}
+\label{fig:stress_p1}
+\end{figure}
+
+\section{Deformaciones}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/png.png} % strain_eqv.png
+\caption{Deformación equivalente/principal. (Insertar captura de Mechanical).}
+\label{fig:strain}
+\end{figure}
+
+\section{Resumen numérico (rellenar)}
+\begin{table}[H]
+\centering
+\caption{Resumen de valores máximos/mínimos (a completar tras postprocesado).}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Métrica} & \textbf{Valor} & \textbf{Comentario} \\
+\midrule
+$\max \|\mathbf{u}\|$ & -- & Desplazamiento máximo \\
+$u_\text{ápex}$ & -- & Desplazamiento normal en ápex \\
+$\max \sigma_1$ & -- & Principal máxima \\
+$\max \varepsilon$ & -- & Deformación representativa \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\chapter{Discusión, limitaciones y mejoras previstas}
+\section{Limitaciones principales del modelo actual}
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Material lineal isotrópico}: la córnea es anisótropa y no lineal; aquí se adopta una primera aproximación.
+  \item \textbf{Ausencia de viscoelasticidad}: la respuesta real puede depender de la velocidad de palpación.
+  \item \textbf{Condiciones fisiológicas simplificadas}: no se modela explícitamente la presión intraocular (IOP) ni el globo ocular completo.
+  \item \textbf{Mallado provisional}: es necesario un estudio de convergencia y refinamiento local para tensiones.
+\end{itemize}
+
+\section{Mejoras recomendadas (siguiente iteración)}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Activar y justificar \textbf{no linealidad geométrica} si se espera deformación apreciable.
+  \item Incorporar \textbf{IOP} como presión interna equivalente (p.\,ej., \SIrange{10}{20}{mmHg}) para pre-tensar la córnea.
+  \item Sustituir material lineal por \textbf{hiperelástico} (y opcionalmente anisótropo tipo HGO) y/o \textbf{viscoelástico}.
+  \item Modelar el \textbf{indentador} explícitamente (rigid body + contacto friccional o sin fricción) en lugar de una fuerza remota, si se requiere realismo de interacción.
+  \item Definir un conjunto de simulaciones paramétricas para construir una \textbf{superficie de respuesta} (ROM) destinada a Unity/háptica.
+\end{itemize}
+
+\chapter{Conclusiones (parte ANSYS)}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Se ha construido un modelo FEM de córnea con un esquema reducido de capas (estroma + Bowman) y partición estromal anterior/posterior.
+  \item Se ha definido un conjunto de propiedades elásticas provisionales y una configuración de análisis estático estructural.
+  \item El modelo produce las magnitudes necesarias para el proyecto: desplazamientos, tensiones y la base para una curva fuerza--desplazamiento.
+  \item Quedan como siguientes hitos la incorporación de condiciones fisiológicas (IOP), mejora constitutiva (hiperelasticidad/anisotropía), y validación mediante refinamiento y comparación bibliográfica/experimental.
+\end{itemize}
+
+\begin{thebibliography}{99}
+
+\bibitem{Dias2013}
+J.~Dias and N.~Ziebarth.
+\newblock \emph{Anterior and posterior corneal stroma elasticity assessed using nanoindentation}.
+\newblock Experimental Eye Research, 2013.
+\newblock DOI: \href{https://doi.org/10.1016/j.exer.2013.06.004}{10.1016/j.exer.2013.06.004}.
+
+\bibitem{Last2012Micron}
+J.~A.~Last et al.
+\newblock \emph{Compliance profile of the human cornea as measured by atomic force microscopy}.
+\newblock Micron, 2012.
+\newblock DOI: \href{https://doi.org/10.1016/j.micron.2012.02.014}{10.1016/j.micron.2012.02.014}.
+
+\bibitem{Kling2014PLOS}
+S.~Kling and S.~Marcos.
+\newblock \emph{Corneal Viscoelastic Properties from Finite-Element Analysis of In Vivo Air-Puff Deformation}.
+\newblock PLOS ONE, 2014.
+\newblock DOI: \href{https://doi.org/10.1371/journal.pone.0104904}{10.1371/journal.pone.0104904}.
+
+\bibitem{Pang2024Review}
+G.~Pang et al.
+\newblock \emph{A review of human cornea finite element modeling}.
+\newblock 2024 (review).
+\newblock (Consultar versión final del journal y completar volumen/páginas).
+
+\bibitem{Blackburn2019Review}
+B.~J.~Blackburn et al.
+\newblock \emph{A Review of Structural and Biomechanical Changes in the Cornea in Aging, Disease, and Photochemical Crosslinking}.
+\newblock Frontiers in Bioengineering and Biotechnology, 2019.
+\newblock DOI: \href{https://doi.org/10.3389/fbioe.2019.00066}{10.3389/fbioe.2019.00066}.
+
+\bibitem{Qin2022Frontiers}
+X.~Qin et al.
+\newblock \emph{Determine Corneal Biomechanical Parameters by Finite Element Simulation and Parametric Analysis}.
+\newblock Frontiers in Bioengineering and Biotechnology, 2022.
+\newblock DOI: \href{https://doi.org/10.3389/fbioe.2022.862947}{10.3389/fbioe.2022.862947}.
+
+\bibitem{Shih2017SciRep}
+P.~J.~Shih et al.
+\newblock \emph{Biomechanical Simulation of Stress Concentration and Intraocular Pressure in Corneas Subjected to Myopic Refractive Surgical Procedures}.
+\newblock Scientific Reports, 2017.
+\newblock DOI: \href{https://doi.org/10.1038/s41598-017-14293-0}{10.1038/s41598-017-14293-0}.
+
+\bibitem{Gomez2024BC}
+C.~Gómez et al.
+\newblock \emph{Study of the Influence of Boundary Conditions on Corneal Deformation Based on the Finite Element Method of a Corneal Biomechanics Model}.
+\newblock Bioengineering (MDPI), 2024.
+\newblock (Completar DOI exacto en versión final; artículo: 9(2):73).
+
+\bibitem{Ren2021Indent}
+Q.~M.~Ren et al.
+\newblock \emph{Effective elastic modulus of an intact cornea related to indentation behavior under physiological conditions}.
+\newblock 2021.
+\newblock (Completar datos bibliográficos finales).
+
+\bibitem{Wu2024Striae}
+Q.~Wu et al.
+\newblock \emph{Mechanical properties of stromal striae and corneal behavior}.
+\newblock Journal of the Mechanical Behavior of Biomedical Materials, 2024.
+\newblock (Completar volumen/páginas).
+
+\bibitem{Mazinani2025ZAMP}
+P.~Mazinani et al.
+\newblock \emph{Evaluating corneal biomechanics using intraocular pressure methods and finite element modeling: parameters study and parametric optimization}.
+\newblock ZAMP, 2025.
+\newblock DOI: \href{https://doi.org/10.1007/s00033-025-02587-7}{10.1007/s00033-025-02587-7}.
+
+\bibitem{Towler2023Heliyon}
+J.~Towler et al.
+\newblock \emph{Typical localised element-specific finite element anterior eye geometry model combined with a localised material model}.
+\newblock Heliyon, 2023.
+\newblock (Completar datos bibliográficos finales).
+
+\bibitem{Karimi2019IndentEye}
+A.~Karimi et al.
+\newblock \emph{A combination of the finite element analysis and experimental indentation via the cornea}.
+\newblock 2019.
+\newblock (Completar journal/DOI según la versión consultada).
+
+\bibitem{HGO2000}
+G.~A.~Holzapfel, T.~C.~Gasser, and R.~W.~Ogden.
+\newblock \emph{A new constitutive framework for arterial wall mechanics and a comparative study of material models}.
+\newblock Journal of Elasticity, 2000.
+\newblock (Usado como referencia para posible extensión anisótropa).
+
+\bibitem{ANSYS_SOLID187}
+ANSYS, Inc.
+\newblock \emph{SOLID187 Element Description (Mechanical APDL Element Reference)}.
+\newblock Documentación ANSYS Help.
+\newblock \url{https://ansyshelp.ansys.com/}.
+
+\bibitem{ANSYS_SHELL181}
+ANSYS, Inc.
+\newblock \emph{SHELL181 Element Description (Mechanical APDL Element Reference)}.
+\newblock Documentación ANSYS Help.
+\newblock \url{https://ansyshelp.ansys.com/}.
+
+\bibitem{IndentationReviewASME2024}
+\newblock \emph{A Comprehensive Review of Indentation of Gels and Soft Hydrated Materials}.
+\newblock Applied Mechanics Reviews (ASME), 2024.
+\newblock (Completar autores/DOI si se incluye en versión final).
+
+\end{thebibliography}
+
+\end{document}
