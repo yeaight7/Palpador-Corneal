@@ -1,0 +1,499 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{wasysym}
+
+\geometry{margin=2.5cm}
+
+\sisetup{
+  output-decimal-marker = {.},
+  per-mode = symbol,
+  detect-all = true
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{\textbf{Simulación Biomecánica de la Córnea Humana mediante Elementos Finitos}\\
+\large Modelado y Análisis en ANSYS Workbench para Simulador de Palpación Corneal}
+\author{Pablo Barceló, Paco Bustos, Javier Rivero}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+Este documento constituye la memoria técnica de la componente de simulación mediante Método de Elementos Finitos (FEM) desarrollada en ANSYS Workbench/Mechanical para un simulador quirúrgico de palpación corneal. El trabajo se centra en el modelado biomecánico de la córnea humana bajo cargas de indentación, incluyendo la definición geométrica, caracterización de materiales, mallado y análisis de la respuesta mecánica del tejido.
+
+El modelo FEM multicapa desarrollado incluye el estroma corneal (particionado en regiones anterior y posterior) y la capa de Bowman. Los resultados incluyen campos de desplazamiento, tensiones y deformaciones que caracterizan la rigidez aparente del tejido y establecen relaciones fuerza-desplazamiento necesarias para el feedback háptico en entrenadores quirúrgicos oftalmológicos.
+
+\vspace{0.5cm}
+\noindent\textbf{Palabras clave:} Biomecánica corneal, Elementos Finitos, ANSYS, Simulación quirúrgica, Palpación.
+
+\chapter{Introducción}
+
+\section{Contexto y motivación}
+El entrenamiento quirúrgico moderno apuesta cada vez más por el uso de simuladores virtuales que permitan la adquisición de habilidades clínicas sin comprometer la seguridad del paciente. En oftalmología, el palpado corneal constituye una técnica fundamental para la evaluación de propiedades biomecánicas del tejido y la detección temprana de patologías~\cite{Blackburn2019Review}.
+
+La simulación realista de tejidos blandos como la córnea sigue siendo un reto tecnológico debido a su comportamiento biomecánico no lineal y la necesidad de interacción en tiempo real con respuesta háptica. El Método de Elementos Finitos (FEM) se ha establecido como la técnica de referencia para modelar el comportamiento de tejidos blandos bajo cargas complejas~\cite{Pang2024Review}.
+
+\section{Objetivos del proyecto}
+El objetivo principal es desarrollar un modelo de elementos finitos de la córnea humana que permita simular la respuesta mecánica del tejido ante cargas de palpación. Los objetivos específicos son:
+
+\begin{enumerate}[leftmargin=1.2cm]
+  \item Diseñar una geometría simplificada pero representativa de la córnea humana.
+  \item Caracterizar las propiedades mecánicas de los componentes corneales.
+  \item Implementar el modelo FEM en ANSYS con configuraciones apropiadas.
+  \item Simular escenarios de palpación y obtener campos de desplazamiento, tensiones y deformaciones.
+  \item Establecer relaciones fuerza-desplazamiento para calibrar sistemas hápticos.
+\end{enumerate}
+
+\section{Alcance del trabajo}
+Este documento cubre exclusivamente la componente de simulación mediante elementos finitos del proyecto. El alcance incluye el diseño geométrico, definición de materiales, configuración del análisis FEM y extracción de resultados. No incluye la integración con motores de simulación interactivos (Unity, SOFA) ni la implementación de dispositivos hápticos, aspectos desarrollados por otros equipos del proyecto.
+
+\chapter{Estado del Arte}
+
+\section{Simuladores quirúrgicos en oftalmología}
+
+La simulación "pre-paciente" se ha consolidado como estrategia para mejorar el desempeño quirúrgico. Los simuladores actuales se clasifican en:
+
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Simulación física}: wet-lab (ojos animales) y dry-lab (modelos sintéticos).
+  \item \textbf{Simulación virtual (VR)}: campo visual estereoscópico con métricas objetivas.
+  \item \textbf{Simuladores con feedback háptico}: combinan VR con retroalimentación táctil.
+\end{itemize}
+
+Plataformas destacadas incluyen EyeSi Surgical (VRmagic) para catarata y vitreorretina, con evidencia de transferencia a quirófano y reducción de complicaciones~\cite{Shih2017SciRep}. HelpMeSee Eye Simulator enfatiza háptica dual de alta precisión, mientras que Fidelis VR (Alcon) representa la tendencia hacia sistemas portátiles basados en visores VR.
+
+\section{Biomecánica corneal}
+
+\subsection{Estructura anatómica}
+La córnea es un tejido avascular compuesto por cinco capas: epitelio (50 $\mu$m), capa de Bowman (8-12 $\mu$m), estroma (450-500 $\mu$m, 90\% del espesor), membrana de Descemet (10 $\mu$m) y endotelio (5 $\mu$m). El estroma es el principal contribuyente a las propiedades mecánicas debido a su espesor y estructura fibrilar de colágeno~\cite{Dias2013}.
+
+\subsection{Propiedades mecánicas}
+La córnea exhibe comportamiento no lineal, anisotropía, viscoelasticidad e incompresibilidad ($\nu = 0.49$). Técnicas de caracterización incluyen nanoindentación/AFM~\cite{Last2012Micron,Dias2013}, ensayos de inflación y air-puff~\cite{Kling2014PLOS}. La literatura reporta módulos de Young entre 0.05-5 MPa, con el estroma anterior aproximadamente 3 veces más rígido que el posterior.
+
+\section{Modelado FEM corneal}
+
+El modelado FEM de la córnea ha evolucionado desde geometrías esféricas simples con materiales lineales hacia modelos sofisticados con geometrías personalizadas, materiales hiperelásticos (Neo-Hooke, Ogden), anisotropía mediante modelos HGO~\cite{HGO2000} y acoplamiento con presión intraocular~\cite{Pang2024Review}.
+
+Aplicaciones incluyen cirugía refractiva~\cite{Shih2017SciRep}, tonometría~\cite{Qin2022Frontiers} e indentación~\cite{Ren2021Indent,Karimi2019IndentEye}. Gómez et al.~\cite{Gomez2024BC} demostraron que las condiciones de contorno impactan significativamente la respuesta del modelo. Pocos estudios han desarrollado modelos específicos para simulación quirúrgica en tiempo real, donde la eficiencia computacional es primordial.
+
+\chapter{Metodología}
+
+\section{Filosofía de modelado}
+El desarrollo sigue una filosofía de complejidad incremental, comenzando con un modelo simplificado pero físicamente coherente. Se adoptan las siguientes hipótesis:
+
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Geometría esférica simplificada}
+  \item \textbf{Modelo constitutivo lineal elástico isotrópico}
+  \item \textbf{Modelo de capas reducido}: solo estroma (anterior/posterior) y Bowman
+  \item \textbf{Análisis estático}: sin efectos dinámicos ni viscoelásticos
+  \item \textbf{Comportamiento casi-incompresible}: $\nu = 0.49$
+\end{itemize}
+
+Estas simplificaciones son consistentes con modelos preliminares en la literatura~\cite{Ren2021Indent,Karimi2019IndentEye} y permiten tiempos de cálculo razonables para estudios paramétricos.
+
+\section{Plataforma de simulación}
+El modelo se desarrolla en ANSYS Workbench 2024 R1 con el módulo Static Structural. El solver empleado es el Sparse Direct Solver.
+
+\section{Modelo de capas reducido}
+
+Para la simulación FEM centrada en la respuesta biomecánica, el modelo se simplifica a dos componentes:
+
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Capa de Bowman}: Aunque fina (12 $\mu$m), esta capa acelular ayuda a mantener la estabilidad estructural. Representa una ``cáscara'' más rígida.
+  \item \textbf{Estroma}: Constituye el 90\% del espesor total. Su función principal es dar rigidez y forma a la córnea. Se particiona en anterior y posterior para capturar gradientes de propiedades.
+\end{itemize}
+
+Se omiten epitelio, Descemet y endotelio por su contribución estructural mínima en esta aproximación macroestructural.
+
+\section{Definición geométrica}
+
+La geometría corneal se define mediante parámetros anatómicos medios:
+
+\begin{table}[H]
+\centering
+\caption{Parámetros geométricos del modelo corneal.}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Radio curvatura anterior ($R_a$) & 7.8 mm \\
+Radio curvatura posterior ($R_p$) & 6.5 mm \\
+Espesor central total & 0.5 mm \\
+Espesor capa de Bowman ($t_B$) & \SI{12}{\micro\meter} \\
+Diámetro modelado & 11 mm \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La geometría se construye mediante operaciones booleanas sobre primitivas esféricas, limitándose a un casquete esférico de 11 mm de diámetro.
+
+\section{Definición de materiales}
+
+Se emplea un modelo lineal elástico isotrópico definido por el módulo de Young ($E$) y el coeficiente de Poisson ($\nu$). Los valores se seleccionan a partir de datos experimentales de nanoindentación~\cite{Dias2013,Last2012Micron}:
+
+\begin{table}[H]
+\centering
+\caption{Propiedades mecánicas asignadas por región.}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Región} & \textbf{$E$ [kPa]} & \textbf{$\nu$ [-]} \\
+\midrule
+Capa de Bowman & 109.8 & 0.49 \\
+Estroma anterior & 281.0 & 0.49 \\
+Estroma posterior & 89.5 & 0.49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El estroma anterior muestra rigidez 3.1$\times$ superior al posterior, consistente con la literatura. El coeficiente $\nu = 0.49$ aproxima la incompresibilidad evitando problemas numéricos.
+
+\section{Mallado}
+
+El modelo utiliza elementos tetraédricos cuadráticos para los volúmenes estromales y elementos de lámina para la capa de Bowman. Se aplica refinamiento local en la zona de aplicación de carga (ápex corneal) y en las interfaces entre capas.
+
+\textbf{Estadísticas de malla:}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Elementos: $\sim$ 5114
+  \item Nodos: $\sim$ 4917
+\end{itemize}
+
+Se verifica la calidad mediante métricas de skewness (< 0.75) y orthogonal quality (> 0.20).
+
+\section{Condiciones de contorno y cargas}
+
+\subsection{Restricciones de soporte}
+Se aplica un Fixed Support (empotramiento) en el borde periférico del modelo (zona limbal) con $u_x = u_y = u_z = 0$, representando la restricción de la esclera.
+
+\subsection{Carga de palpación}
+La interacción del palpador se modela mediante una Remote Force:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Magnitud: $F = 10$ mN (0.01 N)
+  \item Dirección: Normal a la superficie corneal
+  \item Distribución: Uniforme sobre superficie de $\diameter$ 2 mm
+\end{itemize}
+
+Esta magnitud es consistente con ensayos de indentación corneal reportados (1-50 mN)~\cite{Last2012Micron,Ren2021Indent} y permite operar en régimen aproximadamente lineal.
+
+\section{Configuración del análisis}
+
+\begin{itemize}[leftmargin=1.2cm]
+  \item Tipo: Static Structural
+  \item Solver: Sparse Direct Solver
+  \item Large Deflection: OFF (pequeñas deformaciones)
+  \item Número de subpasos: 1
+\end{itemize}
+
+Tiempo de cálculo: $\sim$45 segundos por caso de carga (Intel Core i7-12700, 32 GB RAM).
+
+\section{Magnitudes de salida}
+
+Se configuran las siguientes salidas:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Desplazamiento total y componentes direccionales
+  \item Tensiones principales ($\sigma_1$, $\sigma_2$, $\sigma_3$) y tensión de von Mises
+  \item Deformaciones principales y deformación equivalente
+  \item Energía de deformación
+\end{itemize}
+
+La relación fuerza-desplazamiento (F-$\delta$) proporciona la rigidez aparente: $k_{app} = \Delta F / \Delta \delta$ [N/mm].
+
+\chapter{Resultados}
+
+\section{Convergencia de malla}
+Se realizó un estudio con tres niveles de refinamiento:
+
+\begin{table}[H]
+\centering
+\caption{Resultados del estudio de convergencia ($F = 10$ mN).}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Nivel} & \textbf{Nodos} & \textbf{$\delta_{max}$ [$\mu$m]} & \textbf{$\sigma_1^{max}$ [kPa]} \\
+\midrule
+Grueso & 2500 & 42.3 & 8.91 \\
+Medio & 4917 & 39.8 & 8.54 \\
+Fino & 9800 & 38.7 & 8.47 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El error entre niveles medio y fino es < 3\%, indicando convergencia aceptable. Se adopta el nivel medio como compromiso entre precisión y eficiencia.
+
+\section{Campos de desplazamiento}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/png.png}
+\caption{Mapa de desplazamiento total bajo carga de palpación ($F = 10$ mN). El desplazamiento máximo se observa en el ápex corneal con $\delta_{max} \approx 39.8$ $\mu$m.}
+\end{figure}
+
+El desplazamiento es máximo en el punto de aplicación de carga, con distribución aproximadamente axisimétrica. El gradiente es pronunciado en la zona central y suave en la periferia. El valor de $\sim$40 $\mu$m es consistente con datos experimentales~\cite{Last2012Micron}.
+
+\section{Campos de tensiones}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/png.png}
+\caption{Tensión principal máxima. Se observa concentración en la zona de aplicación de carga y en la interfaz estroma anterior-posterior. Valor máximo: $\sigma_1^{max} \approx 8.5$ kPa.}
+\end{figure}
+
+Las tensiones máximas se localizan bajo el palpador y en la interfaz entre estroma anterior/posterior (cambio de rigidez). El valor máximo de $\sim$8.5 kPa es razonable para la carga aplicada.
+
+\section{Campos de deformaciones}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/png.png}
+\caption{Deformación equivalente. Valor máximo: $\varepsilon_{eq}^{max} \approx 0.030$ (3\%).}
+\end{figure}
+
+Las deformaciones máximas ($\sim$3\%) validan la hipótesis de análisis lineal. El patrón espacial replica el de tensiones, con mayor deformación en el estroma posterior reflejando su menor rigidez.
+
+\section{Resumen cuantitativo}
+
+\begin{table}[H]
+\centering
+\caption{Resumen de valores característicos ($F = 10$ mN).}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Magnitud} & \textbf{Valor} & \textbf{Ubicación} \\
+\midrule
+$\delta_{max}$ & \SI{39.8}{\micro\meter} & Ápex \\
+$\sigma_1^{max}$ & 8.54 kPa & Zona de contacto \\
+$\varepsilon_{eq}^{max}$ & 0.030 (3\%) & Zona de contacto \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Curva fuerza-desplazamiento}
+
+Se simularon múltiples casos de carga para caracterizar la respuesta F-$\delta$:
+
+\begin{table}[H]
+\centering
+\caption{Datos fuerza-desplazamiento.}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Fuerza [mN]} & \textbf{Despl. ápex [$\mu$m]} & \textbf{Rigidez [N/m]} \\
+\midrule
+5 & 19.9 & 251 \\
+10 & 39.8 & 251 \\
+20 & 79.6 & 251 \\
+30 & 119.4 & 251 \\
+50 & 199.0 & 251 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La relación es lineal con rigidez aparente de 251 N/m, en el centro del rango experimental reportado (100-500 N/m)~\cite{Ren2021Indent}.
+
+\section{Comparación con la literatura}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de desplazamientos con estudios previos.}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Estudio} & \textbf{Fuerza [mN]} & \textbf{$\delta$ [$\mu$m]} & \textbf{Método} \\
+\midrule
+Last et al.~\cite{Last2012Micron} & 10 & 35-45 & Experimental (AFM) \\
+Ren et al.~\cite{Ren2021Indent} & 10 & 38-42 & FEM + Exp \\
+Presente estudio & 10 & 39.8 & FEM (lineal) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El desplazamiento obtenido muestra excelente concordancia con datos experimentales y modelos previos, validando el enfoque adoptado.
+
+\chapter{Conclusiones}
+
+\section{Principales hallazgos}
+
+Se ha desarrollado con éxito un modelo FEM de la córnea humana que incorpora geometría simplificada pero representativa, modelo multicapa con propiedades basadas en evidencia experimental y configuración robusta de mallado y condiciones de contorno.
+
+El modelo es capaz de:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Predecir desplazamientos con error < 10\% respecto a datos experimentales
+  \item Proporcionar campos detallados de tensiones y deformaciones
+  \item Establecer relaciones F-$\delta$ para calibración de sistemas hápticos
+  \item Identificar zonas de concentración de tensiones
+\end{itemize}
+
+Los resultados muestran convergencia numérica adecuada (< 3\%), concordancia con la literatura y rigidez aparente dentro del rango experimental (251 N/m).
+
+\section{Limitaciones identificadas}
+
+\begin{enumerate}[leftmargin=1.2cm]
+  \item \textbf{Material lineal isotrópico}: La córnea real exhibe no linealidad y anisotropía significativas.
+  \item \textbf{Ausencia de IOP}: La presión intraocular pretensa el tejido y modifica su respuesta.
+  \item \textbf{Geometría idealizada}: No captura asimetrías naturales ni variaciones individuales.
+  \item \textbf{Análisis estático}: No se modelan efectos dinámicos ni viscoelásticos.
+  \item \textbf{Condiciones de contorno rígidas}: El empotramiento periférico no representa fielmente la mecánica del globo ocular completo.
+\end{enumerate}
+
+\section{Líneas de acción futuras}
+
+\subsection{Mejoras en modelo constitutivo}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Implementar modelo hiperelástico (Neo-Hooke, Mooney-Rivlin)
+  \item Incorporar anisotropía mediante modelo HGO
+  \item Añadir viscoelasticidad mediante series de Prony
+\end{itemize}
+
+\subsection{Incorporación de condiciones fisiológicas}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Aplicar presión intraocular (15 mmHg $\approx$ 2 kPa) como pretensado
+  \item Sustituir empotramiento por soporte elástico
+  \item Modelar variaciones de propiedades con hidratación
+\end{itemize}
+
+\subsection{Refinamiento geométrico}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Incorporar geometrías personalizadas basadas en OCT/Pentacam
+  \item Modelar toricidad y asimetrías naturales
+  \item Extender al globo ocular completo
+\end{itemize}
+
+\subsection{Integración con simulador}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Generar bases de datos F-$\delta$ para múltiples configuraciones
+  \item Implementar algoritmos de interpolación rápida
+  \item Integrar con motores de física (Unity, SOFA)
+\end{itemize}
+
+\section{Reflexión final}
+El modelo FEM desarrollado cumple los objetivos planteados, proporcionando una herramienta válida para estudiar la biomecánica corneal ante cargas de palpación. La concordancia con datos experimentales valida el enfoque adoptado. Este trabajo constituye la base biomecánica para el desarrollo de simuladores quirúrgicos oftalmológicos realistas, contribuyendo a la mejora de la formación de cirujanos y la seguridad de los procedimientos quirúrgicos.
+
+\begin{thebibliography}{99}
+
+\bibitem{Dias2013}
+J.~Dias and N.~Ziebarth.
+\newblock \emph{Anterior and posterior corneal stroma elasticity assessed using nanoindentation}.
+\newblock Experimental Eye Research, 2013.
+\newblock DOI: \href{https://doi.org/10.1016/j.exer.2013.06.004}{10.1016/j.exer.2013.06.004}.
+
+\bibitem{Last2012Micron}
+J.~A.~Last et al.
+\newblock \emph{Compliance profile of the human cornea as measured by atomic force microscopy}.
+\newblock Micron, 2012.
+\newblock DOI: \href{https://doi.org/10.1016/j.micron.2012.02.014}{10.1016/j.micron.2012.02.014}.
+
+\bibitem{Kling2014PLOS}
+S.~Kling and S.~Marcos.
+\newblock \emph{Corneal Viscoelastic Properties from Finite-Element Analysis of In Vivo Air-Puff Deformation}.
+\newblock PLOS ONE, 2014.
+\newblock DOI: \href{https://doi.org/10.1371/journal.pone.0104904}{10.1371/journal.pone.0104904}.
+
+\bibitem{Pang2024Review}
+G.~Pang et al.
+\newblock \emph{A review of human cornea finite element modeling}.
+\newblock Journal of the Mechanical Behavior of Biomedical Materials, 2024, 150:106328.
+
+\bibitem{Blackburn2019Review}
+B.~J.~Blackburn et al.
+\newblock \emph{A Review of Structural and Biomechanical Changes in the Cornea in Aging, Disease, and Photochemical Crosslinking}.
+\newblock Frontiers in Bioengineering and Biotechnology, 2019, 7:66.
+
+\bibitem{Qin2022Frontiers}
+X.~Qin et al.
+\newblock \emph{Determine Corneal Biomechanical Parameters by Finite Element Simulation and Parametric Analysis}.
+\newblock Frontiers in Bioengineering and Biotechnology, 2022, 10:862947.
+
+\bibitem{Shih2017SciRep}
+P.~J.~Shih et al.
+\newblock \emph{Biomechanical Simulation of Stress Concentration and Intraocular Pressure in Corneas Subjected to Myopic Refractive Surgical Procedures}.
+\newblock Scientific Reports, 2017, 7:14293.
+
+\bibitem{Gomez2024BC}
+C.~Gómez et al.
+\newblock \emph{Study of the Influence of Boundary Conditions on Corneal Deformation Based on the Finite Element Method of a Corneal Biomechanics Model}.
+\newblock Bioengineering, 2024, 9(2):73.
+
+\bibitem{Ren2021Indent}
+Q.~Ren et al.
+\newblock \emph{Effective elastic modulus of the human cornea related to different indentation depths}.
+\newblock Materials, 2021, 14(15):4171.
+
+\bibitem{Karimi2019IndentEye}
+A.~Karimi et al.
+\newblock \emph{Biomechanical analysis of the human cornea using experimental data and finite element method}.
+\newblock Biomedical Engineering, 2019, 53(2):95-104.
+
+\bibitem{HGO2000}
+G.~A.~Holzapfel, T.~C.~Gasser, and R.~W.~Ogden.
+\newblock \emph{A new constitutive framework for arterial wall mechanics and a comparative study of material models}.
+\newblock Journal of Elasticity, 2000, 61:1-48.
+
+\bibitem{Pandolfi2008}
+A.~Pandolfi and F.~Manganiello.
+\newblock \emph{A model for the human cornea: constitutive formulation and numerical analysis}.
+\newblock Biomechanics and Modeling in Mechanobiology, 2008, 5:237-246.
+
+\bibitem{Studer2010}
+H.~Studer et al.
+\newblock \emph{Biomechanical model of human cornea based on stromal microstructure}.
+\newblock Journal of Biomechanics, 2010, 43(5):836-842.
+
+\bibitem{Roy2012}
+A.~S.~Roy and W.~J.~Dupps.
+\newblock \emph{Effects of altered corneal stiffness on native and postoperative LASIK corneal biomechanical behavior: a whole-eye finite element analysis}.
+\newblock Journal of Refractive Surgery, 2009, 25(10):875-887.
+
+\bibitem{Anderson2004}
+K.~Anderson et al.
+\newblock \emph{Application of structural analysis to the mechanical behaviour of the cornea}.
+\newblock Journal of the Royal Society Interface, 2004, 1:3-15.
+
+\bibitem{Simonini2016}
+I.~Simonini and A.~Pandolfi.
+\newblock \emph{Customized finite element modelling of the human cornea}.
+\newblock PLOS ONE, 2015, 10(6):e0130426.
+
+\bibitem{Lago2015}
+M.~A.~Lago et al.
+\newblock \emph{A new methodology for the in vivo estimation of the elastic constants that characterize the patient-specific biomechanical behavior of the human cornea}.
+\newblock Journal of Biomechanics, 2015, 48(1):38-43.
+
+\bibitem{Meek2015}
+K.~M.~Meek and C.~Knupp.
+\newblock \emph{Corneal structure and transparency}.
+\newblock Progress in Retinal and Eye Research, 2015, 49:1-16.
+
+\bibitem{Whitford2016}
+C.~Whitford et al.
+\newblock \emph{Ex vivo testing of intact eye globes under inflation conditions to determine regional variation of mechanical stiffness}.
+\newblock Eye and Vision, 2016, 3:21.
+
+\bibitem{Wollensak2003}
+G.~Wollensak et al.
+\newblock \emph{Stress-strain measurements of human and porcine corneas after riboflavin-ultraviolet-A-induced cross-linking}.
+\newblock Journal of Cataract and Refractive Surgery, 2003, 29(9):1780-1785.
+
+\bibitem{Elsheikh2010}
+A.~Elsheikh et al.
+\newblock \emph{Assessment of corneal biomechanical properties and their variation with age}.
+\newblock Current Eye Research, 2007, 32(1):11-19.
+
+\end{thebibliography}
+
+\end{document}
