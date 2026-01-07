@@ -30,23 +30,14 @@
 }
 
 \title{\textbf{Simulación Biomecánica de la Córnea Humana mediante Elementos Finitos}\\
-\large Modelado y Análisis en ANSYS Workbench para Simulador de Palpación Corneal}
+\large Modelado y Simulación en ANSYS para Palpador Corneal}
 \author{Pablo Barceló, Paco Bustos, Javier Rivero}
-\date{\today}
+\date{}
 
 \begin{document}
 \maketitle
 \tableofcontents
 \clearpage
-
-\chapter*{Resumen}
-\addcontentsline{toc}{chapter}{Resumen}
-Este documento constituye la memoria técnica de la componente de simulación mediante Método de Elementos Finitos (FEM) desarrollada en ANSYS Workbench/Mechanical para un simulador quirúrgico de palpación corneal. El trabajo se centra en el modelado biomecánico de la córnea humana bajo cargas de indentación, incluyendo la definición geométrica, caracterización de materiales, mallado y análisis de la respuesta mecánica del tejido.
-
-El modelo FEM multicapa desarrollado incluye el estroma corneal (particionado en regiones anterior y posterior) y la capa de Bowman. Los resultados incluyen campos de desplazamiento, tensiones y deformaciones que caracterizan la rigidez aparente del tejido y establecen relaciones fuerza-desplazamiento necesarias para el feedback háptico en entrenadores quirúrgicos oftalmológicos.
-
-\vspace{0.5cm}
-\noindent\textbf{Palabras clave:} Biomecánica corneal, Elementos Finitos, ANSYS, Simulación quirúrgica, Palpación.
 
 \chapter{Introducción}
 
@@ -239,21 +230,11 @@ Fino & 9800 & 38.7 & 8.47 \\
 
 El error entre niveles medio y fino es < 3\%, indicando convergencia aceptable. Se adopta el nivel medio como compromiso entre precisión y eficiencia.
 
-\section{Campos de desplazamiento}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\linewidth]{figures/png.png}
-\caption{Mapa de desplazamiento total bajo carga de palpación ($F = 10$ mN). El desplazamiento máximo se observa en el ápex corneal con $\delta_{max} \approx 39.8$ $\mu$m.}
-\end{figure}
-
-El desplazamiento es máximo en el punto de aplicación de carga, con distribución aproximadamente axisimétrica. El gradiente es pronunciado en la zona central y suave en la periferia. El valor de $\sim$40 $\mu$m es consistente con datos experimentales~\cite{Last2012Micron}.
-
 \section{Campos de tensiones}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/png.png}
+\includegraphics[width=0.85\linewidth]{figures/tensiones.png}
 \caption{Tensión principal máxima. Se observa concentración en la zona de aplicación de carga y en la interfaz estroma anterior-posterior. Valor máximo: $\sigma_1^{max} \approx 8.5$ kPa.}
 \end{figure}
 
@@ -263,7 +244,7 @@ Las tensiones máximas se localizan bajo el palpador y en la interfaz entre estr
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/png.png}
+\includegraphics[width=0.85\linewidth]{figures/deformaciones.png}
 \caption{Deformación equivalente. Valor máximo: $\varepsilon_{eq}^{max} \approx 0.030$ (3\%).}
 \end{figure}
 
